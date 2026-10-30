@@ -26,4 +26,12 @@ textos_treino = set(train_df["text"])
 textos_val = set(val_df["text"])
 textos_comuns = textos_treino.intersection(textos_val)
 
+# Verificações de integridade da divisão
+assert len(train_df) + len(val_df) == len(df), \
+    "Erro: a quantidade total de registros mudou!" #verifica se a soma dos registros dos dois conjuntos corresponde a quantidade original
+
+assert textos_treino.isdisjoint(textos_val), \
+    "Erro: existem textos idênticos em treino e validação!" # o metodo isdisjoint() retorna True quandos os conjuntos nao possuem elementos em comum
+#assert nao imprime nada
+
 print(f"\nTextos presentes nos dois conjuntos: {len(textos_comuns)}")
