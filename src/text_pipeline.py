@@ -1,36 +1,34 @@
 from pathlib import Path
 import pandas as pd
-from sklearn.model_selection import GroupShuffleSplit
 from sklearn.feature_extraction.text import TfidfVectorizer
+from src.data_split import split_by_text
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "raw" / "train.csv"
 
-df = pd.read_csv(DATA_PATH)
+def vectorize_text(train_texts, val_texts):
+    vectorizer = TfidfVectorizer()
 
-splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    X_train = vectorizer.fit_transform(train_texts)
+    X_val = vectorizer.transform(val_texts)
 
-train_idx, val_idx = next(splitter.split(df, groups=df["text"]))
+    return X_train, X_val, vectorizer
 
-train_df = df.iloc[train_idx]
-val_df = df.iloc[val_idx]
+if __name__ == "__main__":
+    df = pd.read_csv(DATA_PATH)
+    train_df, val_df = split_by_text(df)
 
-vectorizer = TfidfVectorizer()
+    X_train, X_val, vectorizer = vectorize_text(train_df["text"], val_df["text"])
 
-X_train = vectorizer.fit_transform(train_df["text"])
-X_val = vectorizer.transform(val_df["text"])
+    print(X_train.shape)
+    print(X_val.shape)
 
-print(X_train.shape)
-print(X_val.shape)
+    qtd_words = vectorizer.get_feature_names_out()
+    print(len(qtd_words))
 
-qtd_words = vectorizer.get_feature_names_out()
-print(len(qtd_words))
+    assert X_train.shape[1] == X_val.shape[1], \
+        "Erro: a quantidade de colunas é diferente!"
 
-assert X_train.shape[1] == X_val.shape[1], \
-    "Erro: a quantidade de colunas é diferente!"
+    assert set(train_df["text"]).isdisjoint(set(val_df["text"]))
 
-assert set(train_df["text"]).isdisjoint(set(val_df["text"]))
-
-print("Mesma quantidade de colunas:", X_train.shape[1] == X_val.shape[1])
-
-
+    print("Mesma quantidade de colunas:", X_train.shape[1] == X_val.shape[1])
