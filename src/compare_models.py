@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
 
 from src.data_split import split_by_text
 from src.text_pipeline import vectorize_text
@@ -19,9 +20,18 @@ def compare_models(X_train, y_train, X_val, y_val):
     lr_model = train_logistic_model(X_train, y_train)
     lr_pred = lr_model.predict(X_val)
 
+    svm_model = LinearSVC(
+        C=1.0,
+        max_iter=5000,
+        random_state=42
+    )
+    svm_model.fit(X_train, y_train)
+    svm_pred = svm_model.predict(X_val)
+
     return {
         "MultinomialNB": evaluate_predictions(y_val, nb_pred),
         "LogisticRegression": evaluate_predictions(y_val, lr_pred),
+        "LinearSVC": evaluate_predictions(y_val, svm_pred)
     }
 
 if __name__ == "__main__":
@@ -77,6 +87,3 @@ if __name__ == "__main__":
             f"{m['fn']:<8}"
             f"{m['tp']:<8}"
         )
-
-
-

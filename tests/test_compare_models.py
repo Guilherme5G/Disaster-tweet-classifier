@@ -19,16 +19,19 @@ def test_compare_models():
 
     results = compare_models(X_train, y_train, X_val, y_val)
 
-    assert "MultinomialNB" in results
-    assert "LogisticRegression" in results
+    expected_models = {
+        "MultinomialNB",
+        "LogisticRegression",
+        "LinearSVC",
+    }
+    assert set(results.keys()) == expected_models
 
     expected_keys = {"accuracy", "precision", "recall", "f1", "tn", "fp", "fn", "tp"}
 
-    for model_name in ["MultinomialNB", "LogisticRegression"]:
+    for model_name in expected_models:
         metrics = results[model_name]
 
         assert expected_keys.issubset(metrics.keys())
-
         assert 0.0 <= metrics["f1"] <= 1.0
 
         total = metrics["tn"] + metrics["fp"] + metrics["fn"] + metrics["tp"]
