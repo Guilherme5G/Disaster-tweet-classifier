@@ -6,13 +6,14 @@ A reproducible Machine Learning project for binary text classification, develope
 
 Classify whether a tweet refers to a real disaster (1) or not (0).
 
-The project focuses on building a reliable text classification pipeline, investigating data quality issues, preventing data leakage, training and comparing classification models, optimizing hyperparameters, and evaluating predictive performance.
+The project focuses on building a reliable text classification pipeline, investigating data quality issues, preventing data leakage, training and comparing classification models, optimizing hyperparameters, evaluating predictive performance, and persisting a reusable inference Pipeline.
 
 ## Technologies
 
 - Python
 - Pandas and NumPy
 - Scikit-learn
+- Joblib (model persistence)
 - Matplotlib
 - Pytest
 - Git and GitHub
@@ -33,10 +34,13 @@ Work in progress.
 - [x] Baseline evaluation using Accuracy, Precision, Recall and F1-score
 - [x] Confusion matrix and error analysis
 - [x] Logistic Regression model training
-- [x] Automated comparison between MultinomialNB and Logistic Regression
+- [x] Automated comparison of MultinomialNB, Logistic Regression, and LinearSVC
 - [x] Group-aware cross-validation with GroupKFold
 - [x] Hyperparameter optimization using GridSearchCV
-- [x] Automated tests for preprocessing, evaluation, model training, comparison, and tuning
+- [x] Error analysis of false positives and false negatives
+- [x] Group-aware comparison and documented selection of LinearSVC (C=1.0)
+- [x] Pipeline persistence and independent-process inference verification
+- [x] Automated tests for preprocessing, evaluation, comparison, tuning, and persistence (15 passed)
 - [ ] Independent final model evaluation
 - [ ] Kaggle submission
 - [ ] Hugging Face deployment
@@ -88,8 +92,12 @@ The project currently includes the following modules:
 - `src/train_baseline.py`: Trains the initial Multinomial Naive Bayes classifier and generates predictions for the validation dataset.
 - `src/evaluate_baseline.py`: Evaluates predictions using Accuracy, Precision, Recall, F1-score, a confusion matrix, and a classification report.
 - `src/train_logistic.py`: Implements reusable Logistic Regression training and evaluates the classifier using the existing TF-IDF workflow.
-- `src/compare_models.py`: Trains and compares MultinomialNB and Logistic Regression using the same data split and TF-IDF representation.
-- `src/tune_logistic.py`: Performs group-aware hyperparameter optimization using `Pipeline`, `GroupKFold`, and `GridSearchCV`.
+- `src/compare_models.py`: Trains and compares MultinomialNB, Logistic Regression, and LinearSVC using the same data split and TF-IDF representation.
+- `src/tune_logistic.py`: Performs group-aware Logistic Regression hyperparameter optimization using `Pipeline`, `GroupKFold`, and `GridSearchCV`.
+- `src/analyze_errors.py`: Extracts false positives and false negatives and displays real validation examples for LinearSVC.
+- `src/select_model.py`: Compares four candidate configurations using the same group-aware cross-validation folds.
+- `src/final_pipeline.py`: Builds, trains, saves, and loads the selected TF-IDF + LinearSVC Pipeline.
+- `src/verify_saved_pipeline.py`: Reloads the persisted Pipeline in a separate process and reproduces validation metrics without refitting.
 
 The evaluation module provides a reusable `evaluate_predictions()` function that calculates classification metrics independently of the model training procedure.
 
@@ -104,8 +112,11 @@ The comparison workflow uses these existing functions to avoid unnecessary dupli
 - `tests/test_label_conflicts.py`: Validates conflicting-label detection using synthetic data.
 - `tests/test_evaluate_baseline.py`: Validates classification metrics and confusion matrix values using known examples.
 - `tests/test_train_logistic.py`: Tests Logistic Regression training and prediction behavior.
-- `tests/test_compare_models.py`: Tests the model comparison workflow and verifies metric consistency.
+- `tests/test_compare_models.py`: Tests the three-model comparison workflow and verifies metric consistency.
 - `tests/test_tune_logistic.py`: Tests group integrity during cross-validation and verifies the hyperparameter search procedure.
+- `tests/test_analyze_errors.py`: Verifies false-positive and false-negative extraction and invalid prediction-length handling.
+- `tests/test_select_model.py`: Checks candidate coverage, metric ranges, and result ordering.
+- `tests/test_final_pipeline.py`: Verifies identical predictions after serialization and the ability to perform inference without retraining.
 
 ## Exploratory Data Analysis
 
@@ -338,31 +349,32 @@ The Kaggle competition uses the F1-score as its evaluation metric.
 
 ### Experimental Setup
 
-Two classifiers were evaluated using the same group-aware train/validation split and TF-IDF feature representation.
+Three classifiers were evaluated using the same group-aware train/validation split and TF-IDF feature representation.
 
 The comparison included:
 
 - Multinomial Naive Bayes with `alpha=1.0`.
 - Logistic Regression with `C=1.0`, `max_iter=1000`, and `random_state=42`.
+- LinearSVC with `C=1.0`, `max_iter=5000`, and `random_state=42`.
 
-Both models were trained using the same 6,083 training observations and evaluated against the same 1,530 validation observations.
+All three models were trained using the same 6,083 training observations and evaluated against the same 1,530 validation observations.
 
 The comparison workflow is implemented in `src/compare_models.py`, which reuses the existing preprocessing and evaluation components.
 
-Both models receive the same TF-IDF matrices, allowing their predictive behavior to be compared under consistent experimental conditions.
+All three models receive the same TF-IDF matrices, allowing their predictive behavior to be compared under consistent experimental conditions.
 
 ### Validation Results
 
-| Metric | MultinomialNB | Logistic Regression |
-|---|---:|---:|
-| Accuracy | 0.7863 | 0.7954 |
-| Precision (class 1) | 0.8643 | 0.8092 |
-| Recall (class 1) | 0.6124 | 0.7027 |
-| F1-score (class 1) | 0.7169 | 0.7522 |
-| True Negatives | 789 | 742 |
-| False Positives | 65 | 112 |
-| False Negatives | 262 | 201 |
-| True Positives | 414 | 475 |
+| Metric | MultinomialNB | Logistic Regression | LinearSVC |
+|---|---:|---:|---:|
+| Accuracy | 0.7863 | **0.7954** | 0.7948 |
+| Precision (class 1) | **0.8643** | 0.8092 | 0.7891 |
+| Recall (class 1) | 0.6124 | 0.7027 | **0.7308** |
+| F1-score (class 1) | 0.7169 | 0.7522 | **0.7588** |
+| True Negatives | 789 | 742 | 722 |
+| False Positives | 65 | 112 | 132 |
+| False Negatives | 262 | 201 | 182 |
+| True Positives | 414 | 475 | 494 |
 
 ### Comparison Interpretation
 
@@ -388,17 +400,21 @@ The observed improvement cannot be attributed exclusively to one mathematical di
 
 Naive Bayes and Logistic Regression differ in their learning objectives, assumptions, parameter estimation, and regularization mechanisms.
 
+LinearSVC achieved the highest F1-score (0.7588) and recall (0.7308) on this validation split. Relative to Logistic Regression (C=1.0), it detected 19 additional positive tweets and produced 20 additional false positives. Its F1 advantage was 0.0066, or approximately 0.66 percentage points.
+
+These differences reflect a precision-recall trade-off; higher recall is not always preferable when false alarms are operationally expensive.
+
 ### Comparison Limitations
 
 These results were obtained using one fixed local validation split.
 
-They do not establish that Logistic Regression will consistently outperform Naive Bayes on unseen data.
+They do not establish that any one classifier will consistently outperform the others on unseen data.
 
 The comparison also does not provide statistical evidence of superiority across different data partitions.
 
-The Logistic Regression configuration used in this initial comparison was `C=1.0`.
+The Logistic Regression configuration used in this initial comparison was `C=1.0`, and the LinearSVC configuration was `C=1.0`.
 
-Subsequent hyperparameter optimization was performed separately using internal cross-validation.
+Subsequent hyperparameter optimization and model selection were performed separately using internal cross-validation.
 
 ## Hyperparameter Optimization
 
@@ -538,6 +554,135 @@ Although it remained outside the hyperparameter search, it is not a completely u
 
 Future experiments should consider additional candidates, robust evaluation procedures, and an independent final test strategy.
 
+## Final Model Selection and Persistence
+
+### Model Selection
+
+Four candidate configurations were compared using three-fold group-aware cross-validation on the original training partition containing 6,083 observations.
+
+Each candidate used a Pipeline containing TF-IDF vectorization and its respective classifier. The same fold assignments were used across all candidates, and the vectorizer was fitted only within each training fold.
+
+| Model | Mean F1 | F1 Std | Mean Precision | Mean Recall |
+|---|---:|---:|---:|---:|
+| **LinearSVC (C=1.0)** | **0.7471** | **0.0044** | 0.7704 | 0.7254 |
+| Logistic Regression (C=10.0) | 0.7446 | 0.0073 | 0.7633 | 0.7269 |
+| Logistic Regression (C=1.0) | 0.7383 | 0.0143 | 0.8019 | 0.6842 |
+| MultinomialNB (alpha=1.0) | 0.7222 | 0.0182 | 0.8775 | 0.6138 |
+
+**Selected candidate: LinearSVC with `C=1.0`.**
+
+LinearSVC achieved the highest observed mean F1-score and the lowest observed standard deviation across the three folds among these four candidates.
+
+Its mean F1 advantage over Logistic Regression with `C=10.0` was only approximately 0.0025 (0.25 percentage points). This does not demonstrate statistical superiority or guarantee better performance on unseen data.
+
+Furthermore, `C=10.0` had already been selected using the same training data during an earlier hyperparameter search. These cross-validation scores should therefore be treated as development evidence rather than independent final performance estimates.
+
+The selected LinearSVC configuration is the **model candidate for the next project stage**, not a universally optimal classifier.
+
+### Error Analysis
+
+Error analysis was performed on the original 1,530-observation validation partition using `LinearSVC(C=1.0)`.
+
+The model produced:
+
+- 132 false positives.
+- 182 false negatives.
+- 314 total classification errors.
+
+Five examples of each error type were displayed and inspected using `src/analyze_errors.py`.
+
+The observations suggest possible difficulties with figurative or ambiguous language, disaster-related terms used in everyday contexts, limited surrounding context, and potentially inconsistent labels.
+
+For instance, one false negative described smoke from wildfires reaching a school, while another used the expression *annihilated* in a sports-related context despite having a positive target label. These cases motivate further inspection but do not, by themselves, establish the cause of the error or justify changing a label.
+
+The error analysis preserves the original dataset annotations. Any future label review should use explicit annotation criteria.
+
+### Selected Pipeline
+
+The selected model is implemented as a Scikit-learn Pipeline containing:
+
+1. `TfidfVectorizer()`
+2. `LinearSVC(C=1.0, max_iter=5000, random_state=42)`
+
+The development Pipeline is fitted using the original 6,083 training observations. The original 1,530 validation observations are excluded from this fitting step.
+
+Implementation: `src/final_pipeline.py`.
+
+### Model Persistence
+
+The fitted Pipeline is serialized using Joblib and stored locally at:
+
+`models/linear_svm_pipeline.joblib`
+
+The `/models/` directory is excluded from Git version control through `.gitignore`.
+
+Saving the complete Pipeline preserves the TF-IDF vocabulary, learned IDF statistics, and fitted LinearSVC parameters. This avoids rebuilding a different representation at inference time.
+
+### Persistence Verification
+
+The serialized Pipeline was loaded in a separate Python process using `src/verify_saved_pipeline.py`. The verification script generated predictions on the original validation partition **without calling `fit()`**.
+
+The loaded model reproduced the results of the earlier LinearSVC comparison:
+
+| Metric | Loaded Pipeline |
+|---|---:|
+| Accuracy | 0.7948 |
+| Precision (class 1) | 0.7891 |
+| Recall (class 1) | 0.7308 |
+| F1-score (class 1) | 0.7588 |
+| True Negatives | 722 |
+| False Positives | 132 |
+| False Negatives | 182 |
+| True Positives | 494 |
+
+Automated tests using synthetic texts also verified that the model produces identical predictions before and after saving/loading, and that the loaded Pipeline can predict new texts without retraining.
+
+These checks demonstrate technical consistency of persistence for the tested examples; they are **not** an independent final generalization evaluation.
+
+### Reproducing Model Selection and Persistence
+
+Run the group-aware model selection experiment:
+
+```bash
+python -m src.select_model
+```
+
+Inspect LinearSVC validation errors:
+
+```bash
+python -m src.analyze_errors
+```
+
+Train and save the development Pipeline:
+
+```bash
+python -m src.final_pipeline
+```
+
+Load the saved Pipeline in another process and reproduce validation predictions:
+
+```bash
+python -m src.verify_saved_pipeline
+```
+
+Run the full automated test suite:
+
+```bash
+python -m pytest -v
+```
+
+The most recently reported test execution completed successfully with **15 passed tests**.
+
+### Persistence and Deployment Considerations
+
+Joblib artifacts must be loaded only from trusted sources because deserialization can execute arbitrary code.
+
+Python, Scikit-learn, and related dependency versions should remain compatible between training and inference environments.
+
+The locally saved Pipeline was trained on 6,083 development examples. Preparing a Kaggle submission may involve fitting a separate model on all 7,613 labeled examples after the development procedure is finalized. Such a refitted model would not be evaluated as a held-out model using the former 1,530-observation validation partition.
+
+Independent final evaluation, Kaggle submission, and Hugging Face deployment remain future tasks.
+
 ## Known Limitations
 
 ### Conflicting Labels
@@ -554,27 +699,27 @@ Future experiments may investigate alternative strategies for handling conflicti
 
 The initial Naive Bayes baseline incorrectly classified 262 actual disaster tweets as non-disasters.
 
-Logistic Regression reduced this number to 201 on the same validation partition.
+Logistic Regression reduced this number to 201, and LinearSVC reduced it to 182 on the same validation partition.
 
-Although this represents an improvement, a substantial number of disaster-related tweets were still missed.
+However, LinearSVC also generated 132 false positives. A substantial number of disaster-related tweets were still missed, and the operational costs of both error types have not been measured.
 
 Reducing false negatives remains a potential objective depending on the intended use case.
 
 ### Limited Model Coverage
 
-The project has evaluated Multinomial Naive Bayes and Logistic Regression.
+The project has evaluated Multinomial Naive Bayes, Logistic Regression, and LinearSVC.
 
-Both classifiers use the same TF-IDF text representation.
+All three classifiers use the same TF-IDF text representation.
 
-Additional algorithms, text representations, and feature engineering strategies have not yet been systematically evaluated.
+Additional algorithms, text representations, decision thresholds, and feature engineering strategies have not yet been systematically evaluated.
 
 The current results do not establish which approach is best across different datasets or operational conditions.
 
 ### Validation Strategy
 
-The initial model comparison uses one fixed group-aware train/validation split.
+The initial three-model comparison uses one fixed group-aware train/validation split.
 
-Hyperparameter selection uses three-fold group-aware cross-validation within the training partition.
+Logistic Regression hyperparameter selection and subsequent four-candidate comparison use three-fold group-aware cross-validation within the training partition.
 
 This provides a more controlled selection procedure but does not guarantee stable performance across all possible partitions.
 
@@ -608,7 +753,7 @@ Neither directly establishes performance on unseen Kaggle test data or in a real
 
 ## Automated Tests
 
-The project uses Pytest to verify important properties of data splitting, text vectorization, label-conflict analysis, model training, model comparison, hyperparameter optimization, and evaluation.
+The project uses Pytest to verify important properties of data splitting, text vectorization, label-conflict analysis, model training, model comparison, hyperparameter optimization, error analysis, model selection, persistence, and inference.
 
 The current test suite covers:
 
@@ -619,9 +764,13 @@ The current test suite covers:
 - Correct detection of conflicting target labels.
 - Correct classification metrics and confusion matrix values using synthetic examples.
 - Logistic Regression training and prediction behavior.
-- Model comparison output structure and metric consistency.
+- Three-model comparison output structure and metric consistency.
 - Group integrity during internal cross-validation.
 - Correct execution and structure of GridSearchCV results.
+- Extraction of false positives and false negatives, including validation of prediction counts.
+- Candidate-model selection report structure, metric validity, and ordering.
+- Identical predictions before and after Joblib serialization.
+- Inference through a loaded Pipeline without retraining.
 
 The tests use small synthetic datasets to make expected behavior predictable and reduce dependence on external files.
 
@@ -638,8 +787,8 @@ The evaluation implementation also checks:
 
 - Python: 3.11.9
 - Pytest: 9.2.0
-- Tests collected: 10
-- Tests passed: 10
+- Tests collected: 15
+- Tests passed: 15
 - Tests failed: 0
 
 These tests validate specific implementation properties.
@@ -766,7 +915,7 @@ It also prints the validation metrics and confusion matrix values.
 python -m src.compare_models
 ```
 
-This command trains and evaluates Multinomial Naive Bayes and Logistic Regression using the same training and validation data.
+This command trains and evaluates Multinomial Naive Bayes, Logistic Regression, and LinearSVC using the same training and validation data.
 
 It prints the classification metrics, confusion matrix summaries, and differences between the models.
 
@@ -784,6 +933,38 @@ It prints:
 - The best mean cross-validation F1-score.
 - Mean F1-score for each candidate.
 - Standard deviation across folds for each candidate.
+
+### Running Model Selection
+
+```bash
+python -m src.select_model
+```
+
+This command compares the four candidate configurations using the same group-aware cross-validation folds.
+
+### Inspecting LinearSVC Errors
+
+```bash
+python -m src.analyze_errors
+```
+
+This command shows false-positive and false-negative counts and selected real examples from the development validation split.
+
+### Training and Saving the Selected Pipeline
+
+```bash
+python -m src.final_pipeline
+```
+
+This command fits the selected TF-IDF + LinearSVC Pipeline using the development training partition and saves it as `models/linear_svm_pipeline.joblib`.
+
+### Verifying the Saved Pipeline
+
+```bash
+python -m src.verify_saved_pipeline
+```
+
+This command loads the artifact in a separate process, performs inference without fitting the model, and reports validation metrics.
 
 ### Running Automated Tests
 
@@ -815,7 +996,7 @@ During hyperparameter optimization, the complete text representation and classif
 
 The Naive Bayes baseline provides a measurable reference for evaluating alternative classifiers.
 
-The initial Logistic Regression experiment demonstrated improved recall and F1-score on the selected validation partition, alongside an increase in false positives.
+Logistic Regression improved recall and F1-score on the selected validation partition, and LinearSVC achieved the highest observed F1-score and recall among the three tested classifiers. Both improvements involved more false positives compared with the baseline.
 
 This illustrates why evaluating multiple metrics is necessary when the consequences of prediction errors differ.
 
@@ -823,23 +1004,24 @@ Group-aware cross-validation provides a structured procedure for selecting hyper
 
 However, small improvements in cross-validation metrics should not automatically be interpreted as evidence of superiority on unseen data.
 
-The project distinguishes between baseline evaluation, model comparison, hyperparameter selection, and independent final evaluation.
+The project distinguishes between baseline evaluation, model comparison, hyperparameter selection, model selection, persistence verification, and independent final evaluation.
+
+Saving and loading the full TF-IDF + LinearSVC Pipeline makes it possible to reproduce predictions in a separate process without retraining. This technical property must not be confused with generalization performance.
 
 All preprocessing, testing, and experimental decisions are documented to support reproducibility and meaningful model comparisons.
 
 ## Next Steps
 
-- Evaluate the selected hyperparameter configuration using an appropriate held-out evaluation procedure.
-- Investigate additional Logistic Regression hyperparameters and classification thresholds.
-- Compare alternative classification models and text representations.
-- Evaluate strategies for handling conflicting labels.
-- Investigate potential near-duplicate texts and remaining data leakage risks.
-- Strengthen the final evaluation strategy to support generalization claims.
-- Generate predictions for Kaggle's test dataset.
-- Submit predictions to the Kaggle competition.
-- Prepare a deployable inference workflow.
+- Prepare a competition-ready LinearSVC Pipeline using all available labeled training observations, without treating the former development validation split as held-out data after refitting.
+- Generate predictions for Kaggle's official `test.csv`.
+- Validate the submission format and submit predictions to the Kaggle competition.
+- Publish a reproducible Kaggle notebook documenting the workflow and results.
+- Prepare the saved Pipeline for reproducible inference in a deployment environment.
 - Deploy an interactive demonstration using Hugging Face.
-- Document experimental comparisons and final conclusions.
+- Continue investigating alternative model configurations, classification thresholds, and representations when justified by new evidence.
+- Evaluate strategies for handling conflicting labels and potential near-duplicate leakage.
+- Strengthen the independent evaluation strategy before making stronger generalization claims.
+- Document competition feedback and final conclusions without presenting leaderboard scores as independent production performance.
 
 ## Author
 
