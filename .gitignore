@@ -17,3 +17,6 @@ data/raw/
 
 # Credenciais
 .env
+
+# Kaggle submissions
+/submissions/*.csv
