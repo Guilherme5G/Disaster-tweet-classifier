@@ -6,7 +6,7 @@ A reproducible Machine Learning project for binary text classification, develope
 
 Classify whether a tweet refers to a real disaster (1) or not (0).
 
-The project focuses on building a reliable text classification pipeline, investigating data quality issues, preventing data leakage, training and comparing classification models, optimizing hyperparameters, evaluating predictive performance, and persisting a reusable inference Pipeline.
+The project focuses on building a reliable text classification pipeline, investigating data quality issues, preventing data leakage, training and comparing classification models, optimizing hyperparameters, evaluating predictive performance, persisting a reusable inference Pipeline, and producing a documented Kaggle submission.
 
 ## Technologies
 
@@ -40,22 +40,25 @@ Work in progress.
 - [x] Error analysis of false positives and false negatives
 - [x] Group-aware comparison and documented selection of LinearSVC (C=1.0)
 - [x] Pipeline persistence and independent-process inference verification
-- [x] Automated tests for preprocessing, evaluation, comparison, tuning, and persistence (15 passed)
+- [x] Automated tests for preprocessing, evaluation, comparison, tuning, persistence, and submission generation (17 passed)
+- [x] Submission model trained with all 7,613 labeled observations
+- [x] Kaggle submission file generated and validated (3,263 predictions)
+- [x] First official Kaggle submission completed (F1-score: 0.79313)
 - [ ] Independent final model evaluation
-- [ ] Kaggle submission
+- [ ] Public Kaggle notebook
 - [ ] Hugging Face deployment
 
 ## Dataset
 
 Source: [Kaggle - Natural Language Processing with Disaster Tweets](https://www.kaggle.com/competitions/nlp-getting-started)
 
-Download the dataset and place `train.csv` inside:
+Download the competition files and place `train.csv`, `test.csv`, and `sample_submission.csv` inside:
 
-`data/raw/train.csv`
+`data/raw/`
 
 The dataset files are not tracked by Git and must be downloaded separately.
 
-The training dataset contains 7,613 observations and five columns:
+The labeled training dataset contains 7,613 observations and five columns:
 
 - `id`: Unique tweet identifier.
 - `keyword`: Keyword associated with the tweet, when available.
@@ -68,7 +71,7 @@ The training dataset contains 7,613 observations and five columns:
 - `0`: Not a real disaster.
 - `1`: Real disaster.
 
-The current classification experiments use only the `text` column as input features and `target` as the prediction target.
+The classification experiments use only the `text` column as input features and `target` as the prediction target. The unlabeled competition `test.csv` contains 3,263 observations and does not include `target`; `sample_submission.csv` provides the expected `id,target` format.
 
 ## Current Implementation
 
@@ -98,6 +101,8 @@ The project currently includes the following modules:
 - `src/select_model.py`: Compares four candidate configurations using the same group-aware cross-validation folds.
 - `src/final_pipeline.py`: Builds, trains, saves, and loads the selected TF-IDF + LinearSVC Pipeline.
 - `src/verify_saved_pipeline.py`: Reloads the persisted Pipeline in a separate process and reproduces validation metrics without refitting.
+- `src/train_submission.py`: Refits the selected TF-IDF + LinearSVC Pipeline using all 7,613 labeled training observations and saves a separate submission model.
+- `src/generate_submission.py`: Loads the submission model, predicts 3,263 unlabeled tweets, checks submission structure and ID alignment, and writes the Kaggle submission CSV.
 
 The evaluation module provides a reusable `evaluate_predictions()` function that calculates classification metrics independently of the model training procedure.
 
@@ -117,6 +122,8 @@ The comparison workflow uses these existing functions to avoid unnecessary dupli
 - `tests/test_analyze_errors.py`: Verifies false-positive and false-negative extraction and invalid prediction-length handling.
 - `tests/test_select_model.py`: Checks candidate coverage, metric ranges, and result ordering.
 - `tests/test_final_pipeline.py`: Verifies identical predictions after serialization and the ability to perform inference without retraining.
+- `tests/test_train_submission.py`: Verifies training and inference using a synthetic labeled dataset.
+- `tests/test_generate_submission.py`: Verifies the submission column structure, binary targets, and correct ID-to-prediction correspondence for out-of-order IDs.
 
 ## Exploratory Data Analysis
 
@@ -671,7 +678,7 @@ Run the full automated test suite:
 python -m pytest -v
 ```
 
-The most recently reported test execution completed successfully with **15 passed tests**.
+The latest verified complete test suite finished successfully with **17 passed tests**, including submission-training and submission-generation tests.
 
 ### Persistence and Deployment Considerations
 
@@ -679,9 +686,82 @@ Joblib artifacts must be loaded only from trusted sources because deserializatio
 
 Python, Scikit-learn, and related dependency versions should remain compatible between training and inference environments.
 
-The locally saved Pipeline was trained on 6,083 development examples. Preparing a Kaggle submission may involve fitting a separate model on all 7,613 labeled examples after the development procedure is finalized. Such a refitted model would not be evaluated as a held-out model using the former 1,530-observation validation partition.
+The development artifact `models/linear_svm_pipeline.joblib` remains trained on 6,083 observations. For the first Kaggle submission, a separate Pipeline was refitted on all 7,613 labeled observations and stored as `models/linear_svm_submission.joblib`. The original 1,530-observation validation partition is no longer a held-out set for the refitted submission model.
 
-Independent final evaluation, Kaggle submission, and Hugging Face deployment remain future tasks.
+The first Kaggle submission has been completed; independent final evaluation, a public notebook, and Hugging Face deployment remain future tasks.
+
+## First Kaggle Submission
+
+### Objective and Experimental Setup
+
+The project's first official submission to the Kaggle **Natural Language Processing with Disaster Tweets** competition was completed on **November 4, 2026**. The goal was to validate the end-to-end workflow on the competition's unlabeled test data without inspecting its ground-truth labels.
+
+The selected configuration remained unchanged:
+
+- **Text representation:** `TfidfVectorizer()`
+- **Classifier:** `LinearSVC(C=1.0, max_iter=5000, random_state=42)`
+- **Labeled training observations:** 7,613
+- **Official competition test observations:** 3,263
+
+After development-time model selection, `src/train_submission.py` refitted the complete Pipeline on **all 7,613 labeled training examples**. The submission artifact was saved separately as `models/linear_svm_submission.joblib`, preserving the earlier development model and its validation results.
+
+### Submission Generation and Validation
+
+The script `src/generate_submission.py` loaded the previously fitted submission Pipeline and generated test predictions **without calling `fit()`**. It saved `submissions/submission.csv` with exactly two columns: `id` and `target`.
+
+Checks performed before the official upload confirmed:
+
+- Exactly **3,263 rows and 2 columns**.
+- Column names and order: `id`, `target`.
+- Submission IDs matched the original `test.csv` and `sample_submission.csv` in the same order.
+- No missing values and no duplicated IDs.
+- Every prediction belonged to `{0, 1}`.
+
+**Predicted class distribution:**
+
+| Predicted class | Count | Percentage |
+|---|---:|---:|
+| Non-disaster (0) | 1,982 | 60.74% |
+| Disaster (1) | 1,281 | 39.26% |
+| **Total** | **3,263** | **100.00%** |
+
+This is the **predicted** distribution, not the verified distribution of ground-truth labels in the competition test set.
+
+### Official Kaggle Result
+
+- **Submission date:** November 4, 2026
+- **Submission description:** `TF-IDF + LinearSVC C=1.0 - Full training dataset`
+- **Status:** Successfully processed by Kaggle
+- **Official Kaggle F1-score:** **0.79313**
+
+| Evaluation context | F1-score |
+|---|---:|
+| Development model: local validation split (1,530 tweets) | 0.7588 |
+| Refitted submission model: official Kaggle test evaluation | **0.79313** |
+
+The Kaggle F1-score is approximately **3.43 percentage points higher** than the local validation score. However, the values were produced by **different fitted models evaluated on different datasets**. This difference is not, by itself, evidence that refitting on more examples improved generalization.
+
+A competition leaderboard result is valuable feedback about the submitted predictions, but it should not be treated as proof of real-world production readiness. Future model comparisons should rely on appropriately designed evaluation procedures rather than repeatedly optimizing against leaderboard feedback.
+
+### Reproducing the Submission
+
+With the competition CSV files stored under `data/raw/` and the required dependencies installed, run from the repository root:
+
+```bash
+python -m src.train_submission
+python -m src.generate_submission
+python -m pytest -v
+```
+
+The first command creates the submission model; the second generates and validates the CSV; the third runs the automated test suite. The latest verified complete run reported **17 passed, 0 failed**.
+
+Both `/models/` and `/submissions/*.csv` are excluded from Git version control, so these generated artifacts can be recreated locally. The official Kaggle result must be obtained by uploading the generated CSV to the competition; it is not calculated locally without the hidden labels.
+
+### Limitations and Next Steps
+
+The experiment confirms that the project can perform full-data training, serialized-model inference, CSV validation, and a successful competition submission. It does not eliminate uncertainty from annotation inconsistencies, figurative language, distribution differences, near-duplicate examples, or operational false-positive and false-negative costs.
+
+The next planned deliverables are a public, reproducible Kaggle notebook and an interactive inference demonstration deployed on Hugging Face Spaces.
 
 ## Known Limitations
 
@@ -749,11 +829,11 @@ The reported validation scores describe performance on the selected local valida
 
 The reported cross-validation scores describe performance across internal training folds.
 
-Neither directly establishes performance on unseen Kaggle test data or in a real-world production environment.
+The separate official Kaggle submission produced an F1-score of 0.79313 using a refitted model. None of these scores, by itself, establishes performance in a real-world production environment.
 
 ## Automated Tests
 
-The project uses Pytest to verify important properties of data splitting, text vectorization, label-conflict analysis, model training, model comparison, hyperparameter optimization, error analysis, model selection, persistence, and inference.
+The project uses Pytest to verify important properties of data splitting, text vectorization, label-conflict analysis, model training, model comparison, hyperparameter optimization, error analysis, model selection, persistence, inference, and Kaggle submission generation.
 
 The current test suite covers:
 
@@ -771,6 +851,8 @@ The current test suite covers:
 - Candidate-model selection report structure, metric validity, and ordering.
 - Identical predictions before and after Joblib serialization.
 - Inference through a loaded Pipeline without retraining.
+- Submission-model training and inference using synthetic labeled data.
+- Submission DataFrame column structure and exact ID-to-prediction alignment, including out-of-order IDs.
 
 The tests use small synthetic datasets to make expected behavior predictable and reduce dependence on external files.
 
@@ -787,8 +869,8 @@ The evaluation implementation also checks:
 
 - Python: 3.11.9
 - Pytest: 9.2.0
-- Tests collected: 15
-- Tests passed: 15
+- Tests collected: 17
+- Tests passed: 17
 - Tests failed: 0
 
 These tests validate specific implementation properties.
@@ -847,12 +929,14 @@ Download the dataset from the Kaggle competition:
 
 https://www.kaggle.com/competitions/nlp-getting-started
 
-Place `train.csv` inside:
+Place the competition files inside:
 
 ```text
 data/
 └── raw/
-    └── train.csv
+    ├── train.csv
+    ├── test.csv
+    └── sample_submission.csv
 ```
 
 The dataset is excluded from Git version control.
@@ -966,6 +1050,22 @@ python -m src.verify_saved_pipeline
 
 This command loads the artifact in a separate process, performs inference without fitting the model, and reports validation metrics.
 
+### Training the Kaggle Submission Model
+
+```bash
+python -m src.train_submission
+```
+
+This command refits the selected TF-IDF + LinearSVC Pipeline on all 7,613 labeled tweets and saves it as `models/linear_svm_submission.joblib`. The development model is preserved separately.
+
+### Generating the Kaggle Submission CSV
+
+```bash
+python -m src.generate_submission
+```
+
+This command loads the submission model, predicts the 3,263 official test tweets, checks the required `id,target` structure and ID order, and saves `submissions/submission.csv`.
+
 ### Running Automated Tests
 
 ```bash
@@ -1004,24 +1104,23 @@ Group-aware cross-validation provides a structured procedure for selecting hyper
 
 However, small improvements in cross-validation metrics should not automatically be interpreted as evidence of superiority on unseen data.
 
-The project distinguishes between baseline evaluation, model comparison, hyperparameter selection, model selection, persistence verification, and independent final evaluation.
+The project distinguishes between baseline evaluation, model comparison, hyperparameter selection, model selection, persistence verification, competition submission, and independent final evaluation.
 
-Saving and loading the full TF-IDF + LinearSVC Pipeline makes it possible to reproduce predictions in a separate process without retraining. This technical property must not be confused with generalization performance.
+Saving and loading the full TF-IDF + LinearSVC Pipeline makes it possible to reproduce predictions in a separate process without retraining. The first Kaggle submission, with an official F1-score of 0.79313, additionally demonstrates a working end-to-end submission workflow. Neither technical reproducibility nor a leaderboard result alone guarantees real-world generalization.
 
 All preprocessing, testing, and experimental decisions are documented to support reproducibility and meaningful model comparisons.
 
 ## Next Steps
 
-- Prepare a competition-ready LinearSVC Pipeline using all available labeled training observations, without treating the former development validation split as held-out data after refitting.
-- Generate predictions for Kaggle's official `test.csv`.
-- Validate the submission format and submit predictions to the Kaggle competition.
-- Publish a reproducible Kaggle notebook documenting the workflow and results.
-- Prepare the saved Pipeline for reproducible inference in a deployment environment.
-- Deploy an interactive demonstration using Hugging Face.
-- Continue investigating alternative model configurations, classification thresholds, and representations when justified by new evidence.
-- Evaluate strategies for handling conflicting labels and potential near-duplicate leakage.
-- Strengthen the independent evaluation strategy before making stronger generalization claims.
-- Document competition feedback and final conclusions without presenting leaderboard scores as independent production performance.
+- [x] Refit the selected Pipeline using all 7,613 labeled training observations.
+- [x] Generate and validate 3,263 predictions for the official Kaggle `test.csv`.
+- [x] Submit predictions and record the first official Kaggle F1-score (**0.79313**).
+- [ ] Prepare and publish a reproducible Kaggle notebook documenting the workflow and results.
+- [ ] Build an interactive text-inference application using the selected Pipeline.
+- [ ] Deploy the application using Hugging Face Spaces and document the deployment workflow.
+- [ ] Continue investigating alternative model configurations, classification thresholds, and representations when justified by new evidence.
+- [ ] Evaluate strategies for handling conflicting labels and potential near-duplicate leakage.
+- [ ] Strengthen the independent evaluation strategy before making stronger generalization claims.
 
 ## Author
 
