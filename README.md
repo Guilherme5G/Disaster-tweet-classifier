@@ -1110,6 +1110,28 @@ Saving and loading the full TF-IDF + LinearSVC Pipeline makes it possible to rep
 
 All preprocessing, testing, and experimental decisions are documented to support reproducibility and meaningful model comparisons.
 
+## Public Kaggle Notebook
+
+A fully reproducible notebook is available on Kaggle:
+
+**[Disaster Tweets | TF-IDF & Linear SVM](https://www.kaggle.com/code/guiamoreira/disaster-tweets-tf-idf-linear-svm)**
+
+The notebook demonstrates:
+
+- Exploratory data analysis and data quality checks.
+- Identification of repeated texts and conflicting labels.
+- Leakage-aware splitting with GroupShuffleSplit.
+- Comparison of Naive Bayes, Logistic Regression, and LinearSVC.
+- Group-aware cross-validation and model selection.
+- Classification error analysis.
+- Final training using all 7,613 labeled observations.
+- Generation of 3,263 predictions for Kaggle's test dataset.
+
+The first official Kaggle submission achieved an F1-score of **0.79313**.
+
+The notebook can also be found locally at
+`notebooks/disaster_tweets_tfidf_linear_svm.ipynb`.
+
 ## Next Steps
 
 - [x] Refit the selected Pipeline using all 7,613 labeled training observations.
