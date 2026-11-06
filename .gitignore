@@ -20,3 +20,5 @@ data/raw/
 
 # Kaggle submissions
 /submissions/*.csv
+
+/web/audit_cases.json
