@@ -1,12 +1,14 @@
 # Disaster Tweet Classifier
 
-A reproducible Machine Learning project for binary text classification, developed using the Kaggle **Natural Language Processing with Disaster Tweets** competition.
+A reproducible, end-to-end Machine Learning project for binary text classification, developed using the Kaggle **Natural Language Processing with Disaster Tweets** competition. It includes a public Kaggle notebook, an evaluated TF-IDF + LinearSVC model, automated tests, and a browser-based demo deployed on Hugging Face Spaces.
+
+**[Try the live classifier on Hugging Face Spaces](https://huggingface.co/spaces/GuiAraujo05/disaster-tweet-classifier)** | **[Explore the public Kaggle notebook](https://www.kaggle.com/code/guiamoreira/disaster-tweets-tf-idf-linear-svm)**
 
 ## Objective
 
 Classify whether a tweet refers to a real disaster (1) or not (0).
 
-The project focuses on building a reliable text classification pipeline, investigating data quality issues, preventing data leakage, training and comparing classification models, optimizing hyperparameters, evaluating predictive performance, persisting a reusable inference Pipeline, and producing a documented Kaggle submission.
+The project focuses on building a reliable text classification pipeline, investigating data quality issues, preventing data leakage, training and comparing classification models, optimizing hyperparameters, evaluating predictive performance, persisting a reusable inference Pipeline, producing a documented Kaggle submission, and deploying an interactive classifier. The published application is an educational demonstration, not an emergency detection service.
 
 ## Technologies
 
@@ -16,11 +18,14 @@ The project focuses on building a reliable text classification pipeline, investi
 - Joblib (model persistence)
 - Matplotlib
 - Pytest
+- Gradio (local Python demonstration)
+- HTML, CSS, and JavaScript (static browser application)
+- Hugging Face Spaces (static hosting)
 - Git and GitHub
 
 ## Project Status
 
-Work in progress.
+**Core training, Kaggle submission, public notebook, and Hugging Face deployment completed.** Independent final evaluation and additional robustness studies remain future work.
 
 - [x] Python virtual environment setup
 - [x] Dataset download and loading
@@ -40,13 +45,16 @@ Work in progress.
 - [x] Error analysis of false positives and false negatives
 - [x] Group-aware comparison and documented selection of LinearSVC (C=1.0)
 - [x] Pipeline persistence and independent-process inference verification
-- [x] Automated tests for preprocessing, evaluation, comparison, tuning, persistence, and submission generation (17 passed)
+- [x] Automated tests for preprocessing, evaluation, comparison, tuning, persistence, submission generation, and inference (20 passed)
 - [x] Submission model trained with all 7,613 labeled observations
 - [x] Kaggle submission file generated and validated (3,263 predictions)
 - [x] First official Kaggle submission completed (F1-score: 0.79313)
+- [x] Public and reproducible Kaggle notebook
+- [x] Interactive local application using Gradio
+- [x] Static browser application using exported TF-IDF + LinearSVC parameters
+- [x] Python vs. JavaScript prediction agreement on 200 sampled tweets (200/200)
+- [x] Public Hugging Face Static Spaces deployment
 - [ ] Independent final model evaluation
-- [ ] Public Kaggle notebook
-- [ ] Hugging Face deployment
 
 ## Dataset
 
@@ -110,6 +118,16 @@ The Logistic Regression module provides a reusable `train_logistic_model()` func
 
 The comparison workflow uses these existing functions to avoid unnecessary duplication and maintain consistent evaluation procedures.
 
+### Inference and Deployment
+
+- `src/inference.py`: Validates text inputs and converts pre-trained Pipeline predictions into readable labels.
+- `app.py`: Provides a local Gradio interface using a previously trained Joblib Pipeline. The model is loaded once at startup.
+- `src/export_static_model.py`: Exports the trained submission Pipeline's TF-IDF vocabulary, IDF values, linear coefficients, intercept, and reference predictions to JSON without retraining.
+- `web/index.html`: Responsive HTML/CSS/JavaScript interface that performs TF-IDF and linear classification directly in the browser. Includes example inputs, input validation, character count, and a Clear button.
+- `web/model.json`: Portable inference parameters derived from the full-data submission model, loaded by the static application.
+
+The original Python model and the browser implementation are kept separate. The published Hugging Face Space uses only `index.html` and `model.json` for inference; it does not run Python, Gradio, or Scikit-learn on a server.
+
 ### Automated Tests
 
 - `tests/test_data_split.py`: Verifies that identical texts remain in the same data split.
@@ -124,6 +142,7 @@ The comparison workflow uses these existing functions to avoid unnecessary dupli
 - `tests/test_final_pipeline.py`: Verifies identical predictions after serialization and the ability to perform inference without retraining.
 - `tests/test_train_submission.py`: Verifies training and inference using a synthetic labeled dataset.
 - `tests/test_generate_submission.py`: Verifies the submission column structure, binary targets, and correct ID-to-prediction correspondence for out-of-order IDs.
+- `tests/test_inference.py`: Covers disaster, non-disaster, empty, and whitespace-only text handling using a fake predictor, without loading or retraining the real model.
 
 ## Exploratory Data Analysis
 
@@ -678,7 +697,7 @@ Run the full automated test suite:
 python -m pytest -v
 ```
 
-The latest verified complete test suite finished successfully with **17 passed tests**, including submission-training and submission-generation tests.
+The latest verified complete test suite finished successfully with **20 passed tests**, including submission-training, submission-generation, and inference tests.
 
 ### Persistence and Deployment Considerations
 
@@ -688,7 +707,7 @@ Python, Scikit-learn, and related dependency versions should remain compatible b
 
 The development artifact `models/linear_svm_pipeline.joblib` remains trained on 6,083 observations. For the first Kaggle submission, a separate Pipeline was refitted on all 7,613 labeled observations and stored as `models/linear_svm_submission.joblib`. The original 1,530-observation validation partition is no longer a held-out set for the refitted submission model.
 
-The first Kaggle submission has been completed; independent final evaluation, a public notebook, and Hugging Face deployment remain future tasks.
+The first Kaggle submission, public Kaggle notebook, and Hugging Face Static Spaces deployment have been completed. Independent final evaluation remains future work.
 
 ## First Kaggle Submission
 
@@ -753,7 +772,7 @@ python -m src.generate_submission
 python -m pytest -v
 ```
 
-The first command creates the submission model; the second generates and validates the CSV; the third runs the automated test suite. The latest verified complete run reported **17 passed, 0 failed**.
+The first command creates the submission model; the second generates and validates the CSV; the third runs the automated test suite. The latest verified complete run reported **20 passed, 0 failed**.
 
 Both `/models/` and `/submissions/*.csv` are excluded from Git version control, so these generated artifacts can be recreated locally. The official Kaggle result must be obtained by uploading the generated CSV to the competition; it is not calculated locally without the hidden labels.
 
@@ -761,7 +780,7 @@ Both `/models/` and `/submissions/*.csv` are excluded from Git version control, 
 
 The experiment confirms that the project can perform full-data training, serialized-model inference, CSV validation, and a successful competition submission. It does not eliminate uncertainty from annotation inconsistencies, figurative language, distribution differences, near-duplicate examples, or operational false-positive and false-negative costs.
 
-The next planned deliverables are a public, reproducible Kaggle notebook and an interactive inference demonstration deployed on Hugging Face Spaces.
+The public Kaggle notebook and the interactive Hugging Face demonstration have been published. Future work includes independent final evaluation and stronger robustness checks.
 
 ## Known Limitations
 
@@ -835,7 +854,7 @@ The separate official Kaggle submission produced an F1-score of 0.79313 using a 
 
 The project uses Pytest to verify important properties of data splitting, text vectorization, label-conflict analysis, model training, model comparison, hyperparameter optimization, error analysis, model selection, persistence, inference, and Kaggle submission generation.
 
-The current test suite covers:
+The current Python test suite covers:
 
 - Group-aware separation of identical texts.
 - Compatible training and validation feature dimensions.
@@ -853,6 +872,7 @@ The current test suite covers:
 - Inference through a loaded Pipeline without retraining.
 - Submission-model training and inference using synthetic labeled data.
 - Submission DataFrame column structure and exact ID-to-prediction alignment, including out-of-order IDs.
+- Input validation and class-label formatting through `src/inference.py` using a fake Pipeline.
 
 The tests use small synthetic datasets to make expected behavior predictable and reduce dependence on external files.
 
@@ -869,8 +889,8 @@ The evaluation implementation also checks:
 
 - Python: 3.11.9
 - Pytest: 9.2.0
-- Tests collected: 17
-- Tests passed: 17
+- Tests collected: 20
+- Tests passed: 20
 - Tests failed: 0
 
 These tests validate specific implementation properties.
@@ -881,7 +901,7 @@ They do not prove that the classifiers generalize well or that every possible so
 
 ### Requirements
 
-The project uses Python and the dependencies listed in `requirements.txt`.
+The project uses Python and the dependencies listed in `requirements.txt`. The local Gradio demonstration additionally requires Gradio if it is not already included in the environment. The static Hugging Face deployment does not install Python dependencies.
 
 The latest verified execution used Python 3.11.9.
 
@@ -890,6 +910,8 @@ Verified core dependencies include:
 - Pandas 3.1.0
 - NumPy 2.4.6
 - Scikit-learn 1.9.1
+- Joblib 1.6.0
+- Gradio 6.31.0 (local application)
 - Pytest 9.2.0
 
 The environment dependency check completed without reporting broken requirements.
@@ -1080,6 +1102,106 @@ The hyperparameter search uses the original training partition only.
 
 A fresh-environment installation has not yet been independently verified.
 
+## Live Demo and Hugging Face Deployment
+
+### Published Application
+
+**[Open the Disaster Tweet Classifier on Hugging Face Spaces](https://huggingface.co/spaces/GuiAraujo05/disaster-tweet-classifier)**
+
+The live demonstration allows users to enter a tweet, request a prediction, try example texts, and clear the input and previous result. Its interface is built using HTML, CSS, and JavaScript, with a responsive layout. The model runs in the user's browser; no Python inference server is required.
+
+A separate local Gradio interface remains available in `app.py` for Python-based demonstration and testing. The published Space does **not** use Gradio-Lite.
+
+### Deployment Architecture
+
+The final deployment reuses the trained **TF-IDF + LinearSVC** submission Pipeline, refitted on all **7,613 labeled tweets**:
+
+```text
+Training (Python / Scikit-learn)
+    |
+    v
+models/linear_svm_submission.joblib  [local, Git-ignored]
+    |
+    | python -m src.export_static_model
+    v
+web/model.json  [vocabulary, IDF, coefficients, intercept]
+    |
+    v
+web/index.html  [HTML / CSS / JavaScript]
+    |
+    v
+Hugging Face Static Space  [browser-based inference]
+```
+
+The exporter reads the trusted, already-trained Joblib artifact and serializes the learned parameters to JSON. It does **not** retrain the model. The JavaScript implementation tokenizes input text, computes TF-IDF feature values with L2 normalization, and applies the trained LinearSVC coefficients and intercept to determine the predicted class.
+
+The browser application does not use a heuristic keyword list or a separately trained replacement model. The original local Joblib artifacts and the competition CSV files remain Git-ignored. The public `web/model.json` contains inference parameters and must be treated as a publicly accessible model artifact.
+
+### Deployment Validation
+
+The implementation was checked at three levels:
+
+| Verification | Observed result |
+|---|---|
+| Python automated test suite | **20 passed, 0 failed** |
+| Browser model reference checks | **6/6 passed** |
+| Python vs. JavaScript predictions on 200 sampled training-set tweets | **200/200 matched (0 mismatches)** |
+| Public Hugging Face Space | Static interface loaded; model reported **6/6 reference checks passed** |
+
+The 200 comparison cases were sampled from the labeled training dataset with `random_state=42` and scored by the full-data submission Pipeline. This comparison checks **implementation agreement**, not performance against an independent held-out set; the reference labels were the Python model's predictions, not the tweets' ground-truth labels. The same models can still make incorrect predictions. In particular, the JavaScript tokenizer is an approximation of Scikit-learn's Unicode tokenization and has not been proven equivalent for every possible input.
+
+The public deployment was visually checked after publishing `index.html` and `model.json` to the root of the Space. The model status reported `Model ready · 6/6 checks passed`.
+
+### Reproducing the Static Application
+
+With the original Kaggle dataset in `data/raw/` and the Python environment configured, retrain the full-data submission model only if the trusted local artifact is not already available:
+
+```bash
+python -m src.train_submission
+```
+
+Export the inference parameters from that model:
+
+```bash
+python -m src.export_static_model
+```
+
+The exporter writes `web/model.json`. To serve the local web application from the repository root:
+
+```bash
+python -m http.server 8000 --directory web
+```
+
+Open `http://localhost:8000/` and verify that the six browser reference checks pass. Because the application fetches `model.json`, serve the directory over HTTP rather than opening `index.html` through a `file://` URL.
+
+For the hosted version, the Space's root directory contains:
+
+```text
+README.md
+index.html
+model.json
+```
+
+The Space's `README.md` configures `sdk: static` and `app_file: index.html`. The hosted `index.html` and `model.json` correspond to the files under `web/` in this repository. No private competition dataset, Joblib artifact, or Gradio-Lite runtime is required on the Space.
+
+### Local Python Inference Interface
+
+The local Gradio application can also be launched after the trusted full-data submission model has been generated and Gradio is installed:
+
+```bash
+python app.py
+```
+
+This runs a separate Python/Gradio interface backed by the same pre-trained Pipeline. It is distinct from the HTML/JavaScript application published on Hugging Face.
+
+### Deployment Limitations
+
+- Predictions represent a binary statistical classification, not verification that an emergency occurred.
+- The browser and Python implementations were compared on sampled inputs; exact equivalence over all Unicode and tokenization edge cases has not been demonstrated.
+- The selected model's development validation score and Kaggle score were measured in different evaluation settings and should not be interpreted as proof of real-world reliability.
+- All model weights distributed as JSON are visible to visitors. Do not put secrets or private data in a client-side model artifact.
+- The application is for education and portfolio demonstration only, **not** emergency detection, response, or public safety decision-making.
+
 ## Engineering Implications
 
 The project prioritizes reproducibility, separation of responsibilities, data integrity, and reliable model evaluation.
@@ -1127,7 +1249,7 @@ The notebook demonstrates:
 - Final training using all 7,613 labeled observations.
 - Generation of 3,263 predictions for Kaggle's test dataset.
 
-The first official Kaggle submission achieved an F1-score of **0.79313**.
+The first official Kaggle submission achieved an F1-score of **0.79313**. The notebook was published publicly and is available for reproduction on Kaggle.
 
 The notebook can also be found locally at
 `notebooks/disaster_tweets_tfidf_linear_svm.ipynb`.
@@ -1137,9 +1259,10 @@ The notebook can also be found locally at
 - [x] Refit the selected Pipeline using all 7,613 labeled training observations.
 - [x] Generate and validate 3,263 predictions for the official Kaggle `test.csv`.
 - [x] Submit predictions and record the first official Kaggle F1-score (**0.79313**).
-- [ ] Prepare and publish a reproducible Kaggle notebook documenting the workflow and results.
-- [ ] Build an interactive text-inference application using the selected Pipeline.
-- [ ] Deploy the application using Hugging Face Spaces and document the deployment workflow.
+- [x] Prepare and publish a reproducible Kaggle notebook documenting the workflow and results.
+- [x] Build and test a local Gradio inference application using the selected Pipeline.
+- [x] Export the trained model parameters to JSON and validate JavaScript predictions against Python (200/200 sampled tweets).
+- [x] Deploy the HTML/CSS/JavaScript application to Hugging Face Static Spaces and document the deployment workflow.
 - [ ] Continue investigating alternative model configurations, classification thresholds, and representations when justified by new evidence.
 - [ ] Evaluate strategies for handling conflicting labels and potential near-duplicate leakage.
 - [ ] Strengthen the independent evaluation strategy before making stronger generalization claims.
