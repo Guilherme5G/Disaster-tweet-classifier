@@ -1254,6 +1254,14 @@ The first official Kaggle submission achieved an F1-score of **0.79313**. The no
 The notebook can also be found locally at
 `notebooks/disaster_tweets_tfidf_linear_svm.ipynb`.
 
+## Published Model — Hugging Face Hub
+
+The trained TF-IDF + LinearSVC Pipeline is publicly available on Hugging Face Hub.
+
+**[Download and use the trained model](https://huggingface.co/GuiAraujo05/disaster-tweets-tfidf-linear-svm)**
+
+The published artifact was verified in a separate Python virtual environment using `hf_hub_download()` and `joblib.load()`. Predictions were generated successfully without retraining.
+
 ## Next Steps
 
 - [x] Refit the selected Pipeline using all 7,613 labeled training observations.
