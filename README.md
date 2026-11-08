@@ -1262,6 +1262,61 @@ The trained TF-IDF + LinearSVC Pipeline is publicly available on Hugging Face Hu
 
 The published artifact was verified in a separate Python virtual environment using `hf_hub_download()` and `joblib.load()`. Predictions were generated successfully without retraining.
 
+
+
+## Streamlit Interface
+
+A lightweight Streamlit application is available for local inference using the trained TF-IDF + LinearSVC Pipeline.
+
+The interface reuses the existing `src/inference.py` classification logic and uses `st.cache_resource` to keep the trained model loaded across application reruns.
+
+### Running Locally
+
+Install the project dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Train the submission model if the local artifact is not available:
+
+```bash
+python -m src.train_submission
+```
+
+Start the Streamlit application:
+
+```bash
+python -m streamlit run streamlit_app.py
+```
+
+Open the local URL displayed in the terminal.
+
+### Application Screenshots
+
+**Initial interface**
+
+![Streamlit interface](docs/screenshots/streamlit_interface.png)
+
+**Disaster-related prediction**
+
+![Disaster prediction](docs/screenshots/streamlit_disaster.png)
+
+**Not disaster-related prediction**
+
+![Non-disaster prediction](docs/screenshots/streamlit_not_disaster.png)
+
+### Verification
+
+The application was manually checked with disaster-related text, non-disaster text, and empty input.
+
+The automated test suite completed successfully with **20 passed tests**, and the local dependency check reported no broken requirements.
+
+The Streamlit application is a local demonstration. The publicly hosted version remains available on [Hugging Face Spaces](https://huggingface.co/spaces/GuiAraujo05/disaster-tweet-classifier).
+
+**Disclaimer:** This classifier is an educational demonstration and must not be used for emergency monitoring or public safety decisions.
+
+
 ## Next Steps
 
 - [x] Refit the selected Pipeline using all 7,613 labeled training observations.
