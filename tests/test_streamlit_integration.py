@@ -25,3 +25,26 @@ def test_streamlit_disaster_prediction():
 
     mkdown_values = [m.value for m in at.markdown]
     assert any("Disaster-related" in text for text in mkdown_values)
+
+
+def test_streamlit_not_disaster_prediction():
+    at = AppTest.from_file(str(APP_PATH))
+    at.run()
+
+    at.text_area[0].set_value("Happy birthday! Let's celebrate with some music.")
+    at.form_submit_button[0].click().run()
+
+    assert len(at.exception) == 0
+
+    mkdown_values = [m.value for m in at.markdown]
+    assert any("Not disaster-related" in text and "0" in text for text in mkdown_values)
+
+def test_streamlit_empty_input():
+    at = AppTest.from_file(str(APP_PATH))
+    at.run()
+
+    at.form_submit_button[0].click().run()
+    assert len(at.exception) == 0
+
+    assert len(at.warning) == 1
+    assert "Please enter a tweet" in at.warning[0].value

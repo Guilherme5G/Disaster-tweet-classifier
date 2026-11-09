@@ -22,6 +22,7 @@ The project focuses on building a reliable text classification pipeline, investi
 - HTML, CSS, and JavaScript (static browser application)
 - Hugging Face Spaces (static hosting)
 - Git and GitHub
+- Streamlit (local inference interface and automated UI testing)
 
 ## Project Status
 
@@ -45,7 +46,11 @@ The project focuses on building a reliable text classification pipeline, investi
 - [x] Error analysis of false positives and false negatives
 - [x] Group-aware comparison and documented selection of LinearSVC (C=1.0)
 - [x] Pipeline persistence and independent-process inference verification
-- [x] Automated tests for preprocessing, evaluation, comparison, tuning, persistence, submission generation, and inference (20 passed)
+- [x] Automated tests for preprocessing, evaluation, comparison, tuning, persistence, submission generation, and inference (34 passed)
+- [x] Inference edge-case tests, including invalid inputs, long text, and Unicode
+- [x] Integration tests using the persisted TF-IDF + LinearSVC Pipeline
+- [x] Streamlit application tests using AppTest
+- [x] Public Hugging Face demo verified with three manual input scenarios
 - [x] Submission model trained with all 7,613 labeled observations
 - [x] Kaggle submission file generated and validated (3,263 predictions)
 - [x] First official Kaggle submission completed (F1-score: 0.79313)
@@ -143,6 +148,9 @@ The original Python model and the browser implementation are kept separate. The 
 - `tests/test_train_submission.py`: Verifies training and inference using a synthetic labeled dataset.
 - `tests/test_generate_submission.py`: Verifies the submission column structure, binary targets, and correct ID-to-prediction correspondence for out-of-order IDs.
 - `tests/test_inference.py`: Covers disaster, non-disaster, empty, and whitespace-only text handling using a fake predictor, without loading or retraining the real model.
+- `tests/test_inference_edge_cases.py`: Validates invalid inputs, text normalization, long text, and Unicode handling.
+- `tests/test_integration_pipeline.py`: Loads the persisted submission Pipeline and verifies real inference without retraining.
+- `tests/test_streamlit_integration.py`: Tests application startup, positive and negative predictions, and empty-input validation using Streamlit AppTest.
 
 ## Exploratory Data Analysis
 
@@ -892,6 +900,9 @@ The evaluation implementation also checks:
 - Tests collected: 20
 - Tests passed: 20
 - Tests failed: 0
+- Execution time: 2.61 seconds
+
+The integration tests were executed locally with the trained submission model available.
 
 These tests validate specific implementation properties.
 
@@ -1141,11 +1152,11 @@ The browser application does not use a heuristic keyword list or a separately tr
 
 The implementation was checked at three levels:
 
-| Verification | Observed result |
-|---|---|
-| Python automated test suite | **20 passed, 0 failed** |
-| Browser model reference checks | **6/6 passed** |
-| Python vs. JavaScript predictions on 200 sampled training-set tweets | **200/200 matched (0 mismatches)** |
+| Verification | Observed result                                                         |
+|---|-------------------------------------------------------------------------|
+| Python automated test suite | **34 passed, 0 failed**                                                 |
+| Browser model reference checks | **6/6 passed**                                                          |
+| Python vs. JavaScript predictions on 200 sampled training-set tweets | **200/200 matched (0 mismatches)**                                      |
 | Public Hugging Face Space | Static interface loaded; model reported **6/6 reference checks passed** |
 
 The 200 comparison cases were sampled from the labeled training dataset with `random_state=42` and scored by the full-data submission Pipeline. This comparison checks **implementation agreement**, not performance against an independent held-out set; the reference labels were the Python model's predictions, not the tweets' ground-truth labels. The same models can still make incorrect predictions. In particular, the JavaScript tokenizer is an approximation of Scikit-learn's Unicode tokenization and has not been proven equivalent for every possible input.
@@ -1308,11 +1319,28 @@ Open the local URL displayed in the terminal.
 
 ### Verification
 
-The application was manually checked with disaster-related text, non-disaster text, and empty input.
+The Streamlit application was manually tested with
+disaster-related text, non-disaster text, and empty input.
 
-The automated test suite completed successfully with **20 passed tests**, and the local dependency check reported no broken requirements.
+Automated tests using Streamlit AppTest verify:
+- Successful application initialization.
+- Disaster-related predictions.
+- Non-disaster predictions.
+- Empty-input validation messages.
 
-The Streamlit application is a local demonstration. The publicly hosted version remains available on [Hugging Face Spaces](https://huggingface.co/spaces/GuiAraujo05/disaster-tweet-classifier).
+Additional tests cover inference edge cases and integration
+with the persisted TF-IDF + LinearSVC Pipeline.
+
+The complete local test suite passed: **34 tests in 2.61 seconds**.
+
+The public Hugging Face Static Space was separately verified
+with disaster, non-disaster, and empty-input scenarios.
+All three manual checks passed.
+
+The Streamlit application is a local demonstration.
+The public application runs separately using HTML, CSS,
+JavaScript, and exported model parameters.
+The publicly hosted version remains available on [Hugging Face Spaces](https://huggingface.co/spaces/GuiAraujo05/disaster-tweet-classifier).
 
 **Disclaimer:** This classifier is an educational demonstration and must not be used for emergency monitoring or public safety decisions.
 
