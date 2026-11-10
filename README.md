@@ -1344,7 +1344,15 @@ The publicly hosted version remains available on [Hugging Face Spaces](https://h
 
 **Disclaimer:** This classifier is an educational demonstration and must not be used for emergency monitoring or public safety decisions.
 
+## Technical Article
 
+Read the complete technical article:
+
+- [Beyond Accuracy — Full Technical Article (GitHub)](TECHNICAL_ARTICLE.md)
+- [LinkedIn Publication](https://www.linkedin.com/feed/update/urn:li:ugcPost:7525906443053461505/)
+
+The article discusses TF-IDF, LinearSVC, data leakage
+prevention, model evaluation, error analysis, and deployment.
 ## Next Steps
 
 - [x] Refit the selected Pipeline using all 7,613 labeled training observations.
